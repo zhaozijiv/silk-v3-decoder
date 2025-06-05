@@ -22,6 +22,17 @@ Wechat mini program audio conversion support.
 * silk_v3_encoder (Encode to silk v3 support)
 * ffmpeg (Note: When using FFmpeg, do not need LAME any more)
 
+## Tkinter GUI
+
+The repository ships with a simple Python interface `gui_tkinter.py` that
+replaces the old AutoIt program.  It leverages `silk_v3_decoder.exe`,
+`silk_v3_encoder.exe` and `ffmpeg` to provide decoding and encoding
+capabilities.  Launch it with Python 3:
+
+```bash
+python gui_tkinter.py
+```
+
 ## How To Use
 
 Download the `lame.exe`, `silk2mp3.exe`, `silk_v3_decoder.exe` in one folder. Then run the `silk2mp3.exe`.
@@ -97,6 +108,15 @@ Alipay: kn007#126.com (Change # to @)
 
 * silk_v3_encoder （编码支持组件）
 * ffmpeg （注意：当使用FFmpeg时，LAME组件不再强制依赖）
+
+## Tkinter图形界面
+
+仓库中附带 `gui_tkinter.py` 脚本，可在安装 Python3 与 FFmpeg 后直接
+运行，以替代旧版 `silk2mp3.exe` 完成编码和解码工作：
+
+```bash
+python gui_tkinter.py
+```
 
 ## 如何使用
 
