@@ -33,33 +33,33 @@ cd $cur_dir
 while [ $3 ]; do
 	pidof /usr/bin/ffmpeg&&echo -e "${RED}[Error]${RESET} ffmpeg is occupied by another application, please check it."&&exit
 	[ ! -d "$1" ]&&echo -e "${RED}[Error]${RESET} Input folder not found, please check it."&&exit
-	TOTAL=$(ls $1|wc -l)
+       TOTAL=$(find "$1" -maxdepth 1 -type f | wc -l)
 	[ ! -d "$2" ]&&mkdir "$2"&&echo -e "${WHITE}[Notice]${RESET} Output folder not found, create it."
 	[ ! -d "$2" ]&&echo -e "${RED}[Error]${RESET} Output folder could not be created, please check it."&&exit
 	CURRENT=0
 	echo -e "${WHITE}========= Batch Conversion Start ==========${RESET}"
-	ls $1 | while read line; do
-		let CURRENT+=1
-		$cur_dir/silk/decoder "$1/$line" "$2/$line.pcm" > /dev/null 2>&1
-		if [ ! -f "$2/$line.pcm" ]; then
-			ffmpeg -y -i "$1/$line" "$2/${line%.*}.$3" > /dev/null 2>&1 &
-			ffmpeg_pid=$!
-			while kill -0 "$ffmpeg_pid"; do sleep 1; done > /dev/null 2>&1
-			[ -f "$2/${line%.*}.$3" ]&&echo -e "[$CURRENT/$TOTAL]${GREEN}[OK]${RESET} Convert $line to ${line%.*}.$3 success, ${YELLOW}but not a silk v3 encoded file.${RESET}"&&continue
-			sed -i '1i\\#\!AMR' "$1/$line"
-			ffmpeg -y -i "$1/$line" "$2/${line%.*}.$3" > /dev/null 2>&1 &
-			ffmpeg_pid=$!
-			while kill -0 "$ffmpeg_pid"; do sleep 1; done > /dev/null 2>&1
-			[ -f "$2/${line%.*}.$3" ]&&echo -e "[$CURRENT/$TOTAL]${YELLOW}[Warning]${RESET} Could not recognize this file, force using ffmpeg convert $line to ${line%.*}.$3 success, maybe have error.${RESET}"&&continue
-			echo -e "[$CURRENT/$TOTAL]${RED}[Error]${RESET} Convert $line false, maybe not a audio file."&&continue
-		fi
-		ffmpeg -y -f s16le -ar 24000 -ac 1 -i "$2/$line.pcm" "$2/${line%.*}.$3" > /dev/null 2>&1 &
-		ffmpeg_pid=$!
-		while kill -0 "$ffmpeg_pid"; do sleep 1; done > /dev/null 2>&1
-		rm "$2/$line.pcm"
-		[ ! -f "$2/${line%.*}.$3" ]&&echo -e "[$CURRENT/$TOTAL]${RED}[Error]${RESET} Convert $line false, maybe ffmpeg no format handler for $3."&&continue
-		echo -e "[$CURRENT/$TOTAL]${GREEN}[OK]${RESET} Convert $line To ${line%.*}.$3 Finish."
-	done
+       find "$1" -maxdepth 1 -type f -print0 | while IFS= read -r -d '' line; do
+               let CURRENT+=1
+               "$cur_dir/silk/decoder" "$line" "$2/$(basename "$line").pcm" > /dev/null 2>&1
+               if [ ! -f "$2/$(basename "$line").pcm" ]; then
+                       ffmpeg -y -i "$line" "$2/$(basename "${line%.*}").$3" > /dev/null 2>&1 &
+                       ffmpeg_pid=$!
+                       while kill -0 "$ffmpeg_pid"; do sleep 1; done > /dev/null 2>&1
+                       [ -f "$2/$(basename "${line%.*}").$3" ]&&echo -e "[$CURRENT/$TOTAL]${GREEN}[OK]${RESET} Convert $(basename "$line") to $(basename "${line%.*}").$3 success, ${YELLOW}but not a silk v3 encoded file.${RESET}"&&continue
+                       sed -i '1i\\#\!AMR' "$line"
+                       ffmpeg -y -i "$line" "$2/$(basename "${line%.*}").$3" > /dev/null 2>&1 &
+                       ffmpeg_pid=$!
+                       while kill -0 "$ffmpeg_pid"; do sleep 1; done > /dev/null 2>&1
+                       [ -f "$2/$(basename "${line%.*}").$3" ]&&echo -e "[$CURRENT/$TOTAL]${YELLOW}[Warning]${RESET} Could not recognize this file, force using ffmpeg convert $(basename "$line") to $(basename "${line%.*}").$3 success, maybe have error.${RESET}"&&continue
+                       echo -e "[$CURRENT/$TOTAL]${RED}[Error]${RESET} Convert $(basename "$line") false, maybe not a audio file."&&continue
+               fi
+               ffmpeg -y -f s16le -ar 24000 -ac 1 -i "$2/$(basename "$line").pcm" "$2/$(basename "${line%.*}").$3" > /dev/null 2>&1 &
+               ffmpeg_pid=$!
+               while kill -0 "$ffmpeg_pid"; do sleep 1; done > /dev/null 2>&1
+               rm "$2/$(basename "$line").pcm"
+               [ ! -f "$2/$(basename "${line%.*}").$3" ]&&echo -e "[$CURRENT/$TOTAL]${RED}[Error]${RESET} Convert $(basename "$line") false, maybe ffmpeg no format handler for $3."&&continue
+               echo -e "[$CURRENT/$TOTAL]${GREEN}[OK]${RESET} Convert $(basename "$line") To $(basename "${line%.*}").$3 Finish."
+       done
 	echo -e "${WHITE}========= Batch Conversion Finish =========${RESET}"
 	exit
 done
