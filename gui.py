@@ -14,7 +14,9 @@ class SilkGUI:
         self.output_dir = StringVar()
         self.format_var = StringVar(value="mp3")
         self.batch_var = BooleanVar(value=False)
+        self.status_var = StringVar(value="")
 
+        # UI 构建
         Label(master, text="Input file or folder:").grid(row=0, column=0, sticky="w")
         Entry(master, textvariable=self.input_path, width=50).grid(row=0, column=1, padx=5)
         Button(master, text="Browse", command=self.browse_input).grid(row=0, column=2)
@@ -31,12 +33,10 @@ class SilkGUI:
         format_cb.grid(row=3, column=1, sticky="w")
 
         Button(master, text="Start", command=self.start).grid(row=4, column=1, pady=5)
+        Label(master, textvariable=self.status_var, fg="blue").grid(row=5, column=0, columnspan=3, sticky="w", padx=10)
 
     def browse_input(self):
-        if self.batch_var.get():
-            path = filedialog.askdirectory()
-        else:
-            path = filedialog.askopenfilename()
+        path = filedialog.askdirectory() if self.batch_var.get() else filedialog.askopenfilename()
         if path:
             self.input_path.set(path)
 
@@ -57,47 +57,58 @@ class SilkGUI:
 
         script_dir = os.path.dirname(os.path.abspath(__file__))
         decoder = os.path.join(script_dir, "decoder.exe")
-        ffmpeg = os.path.join(script_dir, "ffmpeg")
-        if os.name == "nt":
-            ffmpeg += ".exe"
+        ffmpeg = os.path.join(script_dir, "ffmpeg.exe" if os.name == "nt" else "ffmpeg")
 
         if not os.path.isfile(decoder):
-            messagebox.showerror("Error", f"decoder.exe not found: {decoder}")
+            messagebox.showerror("Error", f"decoder.exe not found:\n{decoder}")
             return
         if not os.path.isfile(ffmpeg):
-            messagebox.showerror("Error", f"ffmpeg not found: {ffmpeg}")
+            messagebox.showerror("Error", f"ffmpeg not found:\n{ffmpeg}")
             return
 
         if batch:
-            if not out_dir:
-                messagebox.showerror("Error", "Please select output directory")
+            if not os.path.isdir(in_path):
+                messagebox.showerror("Error", "Invalid folder selected")
                 return
-            files = [os.path.join(in_path, f) for f in os.listdir(in_path)]
+            files = [os.path.join(in_path, f) for f in os.listdir(in_path) if f.lower().endswith(".silk")]
+            if not files:
+                messagebox.showwarning("Warning", "No .silk files found in the folder.")
+                return
         else:
             files = [in_path]
             out_dir = out_dir or os.path.dirname(in_path)
+
+        if not os.path.isdir(out_dir):
+            messagebox.showerror("Error", "Please select a valid output directory")
+            return
+
+        failed = []
 
         for src in files:
             base = os.path.splitext(os.path.basename(src))[0]
             pcm = os.path.join(out_dir, base + ".pcm")
             dst = os.path.join(out_dir, f"{base}.{out_fmt}")
+
+            self.status_var.set(f"Converting: {os.path.basename(src)}")
+            self.master.update()
+
             try:
                 subprocess.run([decoder, src, pcm], check=True)
                 subprocess.run(
-                    [ffmpeg, "-y", "-f", "s16le", "-ar", "24000", "-ac", "1",
-                     "-i", pcm, dst],
-                    check=True,
+                    [ffmpeg, "-y", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", pcm, dst],
+                    check=True
                 )
             except subprocess.CalledProcessError:
-                if os.path.exists(pcm):
-                    os.remove(pcm)
-                messagebox.showerror("Error", f"Failed to convert {src}")
-                return
+                failed.append(src)
             finally:
                 if os.path.exists(pcm):
                     os.remove(pcm)
 
-        messagebox.showinfo("Done", "Conversion finished")
+        self.status_var.set("")
+        if failed:
+            messagebox.showwarning("Done", f"{len(failed)} file(s) failed to convert.")
+        else:
+            messagebox.showinfo("Done", "All conversions completed successfully.")
 
 
 def main():
@@ -108,3 +119,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
