@@ -56,24 +56,48 @@ class SilkGUI:
             return
 
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        script = os.path.join(script_dir, "converter.sh")
-        if not os.path.isfile(script):
-            messagebox.showerror("Error", f"converter.sh not found: {script}")
+        decoder = os.path.join(script_dir, "decoder.exe")
+        ffmpeg = os.path.join(script_dir, "ffmpeg")
+        if os.name == "nt":
+            ffmpeg += ".exe"
+
+        if not os.path.isfile(decoder):
+            messagebox.showerror("Error", f"decoder.exe not found: {decoder}")
+            return
+        if not os.path.isfile(ffmpeg):
+            messagebox.showerror("Error", f"ffmpeg not found: {ffmpeg}")
             return
 
         if batch:
             if not out_dir:
                 messagebox.showerror("Error", "Please select output directory")
                 return
-            cmd = ["bash", script, in_path, out_dir, out_fmt]
+            files = [os.path.join(in_path, f) for f in os.listdir(in_path)]
         else:
-            cmd = ["bash", script, in_path, out_fmt]
+            files = [in_path]
+            out_dir = out_dir or os.path.dirname(in_path)
 
-        try:
-            subprocess.check_call(cmd)
-            messagebox.showinfo("Done", "Conversion finished")
-        except subprocess.CalledProcessError:
-            messagebox.showerror("Error", "Conversion failed")
+        for src in files:
+            base = os.path.splitext(os.path.basename(src))[0]
+            pcm = os.path.join(out_dir, base + ".pcm")
+            dst = os.path.join(out_dir, f"{base}.{out_fmt}")
+            try:
+                subprocess.run([decoder, src, pcm], check=True)
+                subprocess.run(
+                    [ffmpeg, "-y", "-f", "s16le", "-ar", "24000", "-ac", "1",
+                     "-i", pcm, dst],
+                    check=True,
+                )
+            except subprocess.CalledProcessError:
+                if os.path.exists(pcm):
+                    os.remove(pcm)
+                messagebox.showerror("Error", f"Failed to convert {src}")
+                return
+            finally:
+                if os.path.exists(pcm):
+                    os.remove(pcm)
+
+        messagebox.showinfo("Done", "Conversion finished")
 
 
 def main():
