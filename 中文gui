@@ -1,0 +1,119 @@
+import os
+import subprocess
+from tkinter import Tk, filedialog, messagebox, ttk
+from tkinter import StringVar, BooleanVar, Label, Entry, Button, Checkbutton
+
+
+class SilkGUI:
+    def __init__(self, master):
+        self.master = master
+        master.title("Silk 音频转换器")
+
+        self.input_path = StringVar()
+        self.output_dir = StringVar()
+        self.format_var = StringVar(value="mp3")
+        self.batch_var = BooleanVar(value=False)
+        self.status_var = StringVar(value="")
+
+        Label(master, text="选择输入文件或文件夹：").grid(row=0, column=0, sticky="w")
+        Entry(master, textvariable=self.input_path, width=50).grid(row=0, column=1, padx=5)
+        Button(master, text="浏览", command=self.browse_input).grid(row=0, column=2)
+
+        Checkbutton(master, text="批量模式（文件夹）", variable=self.batch_var).grid(row=1, column=1, sticky="w")
+
+        Label(master, text="选择输出目录：").grid(row=2, column=0, sticky="w")
+        Entry(master, textvariable=self.output_dir, width=50).grid(row=2, column=1, padx=5)
+        Button(master, text="浏览", command=self.browse_output).grid(row=2, column=2)
+
+        Label(master, text="输出格式：").grid(row=3, column=0, sticky="w")
+        format_cb = ttk.Combobox(master, textvariable=self.format_var,
+                                 values=["mp3", "wav", "ogg"], width=10, state="readonly")
+        format_cb.grid(row=3, column=1, sticky="w")
+
+        Button(master, text="开始转换", command=self.start).grid(row=4, column=1, pady=5)
+        Label(master, textvariable=self.status_var, fg="blue").grid(row=5, column=0, columnspan=3, sticky="w", padx=10)
+
+    def browse_input(self):
+        path = filedialog.askdirectory() if self.batch_var.get() else filedialog.askopenfilename()
+        if path:
+            self.input_path.set(path)
+
+    def browse_output(self):
+        path = filedialog.askdirectory()
+        if path:
+            self.output_dir.set(path)
+
+    def start(self):
+        in_path = self.input_path.get()
+        out_dir = self.output_dir.get()
+        out_fmt = self.format_var.get()
+        batch = self.batch_var.get()
+
+        if not in_path:
+            messagebox.showerror("错误", "请选择输入路径")
+            return
+
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        decoder = os.path.join(script_dir, "decoder.exe")
+        ffmpeg = os.path.join(script_dir, "ffmpeg.exe" if os.name == "nt" else "ffmpeg")
+
+        if not os.path.isfile(decoder):
+            messagebox.showerror("错误", f"未找到 decoder.exe：\n{decoder}")
+            return
+        if not os.path.isfile(ffmpeg):
+            messagebox.showerror("错误", f"未找到 ffmpeg：\n{ffmpeg}")
+            return
+
+        if batch:
+            if not os.path.isdir(in_path):
+                messagebox.showerror("错误", "请选择有效的文件夹")
+                return
+            files = [os.path.join(in_path, f) for f in os.listdir(in_path) if f.lower().endswith(".silk")]
+            if not files:
+                messagebox.showwarning("提示", "文件夹中没有 .silk 文件")
+                return
+        else:
+            files = [in_path]
+            out_dir = out_dir or os.path.dirname(in_path)
+
+        if not os.path.isdir(out_dir):
+            messagebox.showerror("错误", "请选择有效的输出目录")
+            return
+
+        failed = []
+
+        for src in files:
+            base = os.path.splitext(os.path.basename(src))[0]
+            pcm = os.path.join(out_dir, base + ".pcm")
+            dst = os.path.join(out_dir, f"{base}.{out_fmt}")
+
+            self.status_var.set(f"正在转换：{os.path.basename(src)}")
+            self.master.update()
+
+            try:
+                subprocess.run([decoder, src, pcm], check=True)
+                subprocess.run(
+                    [ffmpeg, "-y", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", pcm, dst],
+                    check=True
+                )
+            except subprocess.CalledProcessError:
+                failed.append(src)
+            finally:
+                if os.path.exists(pcm):
+                    os.remove(pcm)
+
+        self.status_var.set("")
+        if failed:
+            messagebox.showwarning("转换完成", f"{len(failed)} 个文件转换失败。")
+        else:
+            messagebox.showinfo("转换完成", "所有文件转换成功！")
+
+
+def main():
+    root = Tk()
+    SilkGUI(root)
+    root.mainloop()
+
+
+if __name__ == "__main__":
+    main()
