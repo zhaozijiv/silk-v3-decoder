@@ -42,6 +42,12 @@ sh converter.sh input ouput mp3
 ```
 Notice: the `input` folder is content the audio files you need to convert, the `output` folder is content the audio files after conversion finished, the `mp3` is a format you need to output.
 
+A simple Tkinter interface is available via `gui.py` which internally
+invokes `converter.sh` for the actual conversion.  Run it with:
+```bash
+python gui.py
+```
+
 If you need to convert files on the `Windows` platfrom, [click here](https://dl.kn007.net/directlink/silk2mp3.zip "silk2mp3.zip") to download zip package for `silk2mp3.exe` to convert, also can <a href='/windows' target="_blank">click here</a> to get more information.
 
 ## Other
@@ -97,6 +103,12 @@ sh converter.sh 33921FF3774A773BB193B6FD4AD7C33E.slk mp3
 sh converter.sh input ouput mp3
 ```
 注意：其中`input`是要转换的目录，而`output`是最终转换后音频输出的目录，最后的`mp3`参数是最终转换后输出的格式。
+
+项目还提供 `gui.py` 脚本，通过 Tkinter 图形界面调用 `converter.sh`
+实现转换，运行方式如下：
+```bash
+python gui.py
+```
 
 如果你需要在`Windows`下使用该程序，请下载[silk2mp3.exe](https://dl.kn007.net/directlink/silk2mp3.zip "silk2mp3.zip")应用程序来完成转换，你可<a href='/windows' target="_blank">点击这里</a>来查看更多Windows下如何使用的相关说明。
 
